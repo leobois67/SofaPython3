@@ -73,7 +73,7 @@ class JaxForceField(Sofa.Core.ForceFieldVec3d):
         return get_kmatrix(self.mstate.position.value, self.length, self.stiffness)
 
 
-def createScene(root):
+def createScene(root, method="implicit-matrix-assembly", n_particles=1_000, use_sofa=False):
     root.dt = 1e-3
     root.gravity = (0, -9.8, 0)
     root.box = (-5, -5, -5, 5, 5, 5)
@@ -100,19 +100,17 @@ def createScene(root):
     root.addObject("DefaultAnimationLoop")
     root.addObject("VisualStyle", displayFlags="showBehaviorModels showForceFields")
 
-    root.addObject("MechanicalObject", name="origin", template="Vec3d", position="0 0 0")  # For SOFA springs below
-
     physics = root.addChild("Physics")
 
-    # physics.addObject("EulerExplicitSolver", name="eulerExplicit")
+    if method.lower() == "explicit":  # Requires the implementation of 'addForce'
+        physics.addObject("EulerExplicitSolver", name="eulerExplicit")
+    elif method.lower() == "implicit-matrix-free":  # Requires the implementation of 'addForce' and 'addDForce'
+        physics.addObject("EulerImplicitSolver", name="eulerImplicit")
+        physics.addObject("CGLinearSolver", template="GraphScattered", name="solver", iterations=50, tolerance=1e-5, threshold=1e-5)
+    elif method == "implicit-matrix-assembly":  # Requires the implementation of 'addForce', 'addDForce' and 'addKToMatrix'
+        physics.addObject("EulerImplicitSolver", name="eulerImplicit")
+        physics.addObject("SparseLDLSolver", name="solver", template="CompressedRowSparseMatrixd")
 
-    # physics.addObject("EulerImplicitSolver", name="eulerImplicit")
-    # physics.addObject("CGLinearSolver", name="solver", iterations=50, tolerance=1e-5, threshold=1e-5)
-
-    physics.addObject("EulerImplicitSolver", name="eulerImplicit")
-    physics.addObject("SparseLDLSolver", name="solver", template="CompressedRowSparseMatrixd")
-
-    n_particles = 1_000
     position = np.random.uniform(-1, 1, (n_particles, 3))
     velocity = np.zeros_like(position)
     length = np.random.uniform(0.8, 1.2, size=(n_particles, 1))
@@ -121,19 +119,28 @@ def createScene(root):
     particles = physics.addChild("Particles")
     particles.addObject("MechanicalObject", name="state", template="Vec3d", position=position, velocity=velocity, showObject=True)
     particles.addObject("UniformMass", name="mass", totalMass=n_particles)
-    particles.addObject(JaxForceField(length=length, stiffness=stiffness))
 
-    # SOFA equivalent for comparison (much faster)
-    # particles.addObject("SpringForceField", name="force", object1="@/origin", object2="@/Physics/Particles/state", indices1=np.zeros(n_particles, dtype=np.int32), indices2=np.arange(n_particles), length=length, stiffness=stiffness*np.ones(n_particles), damping=np.zeros(n_particles))
+    if not use_sofa:  # Use the force field implemented with JAX
+        particles.addObject(JaxForceField(length=length, stiffness=stiffness))
+    else:  # Use a SOFA equivalent for comparison
+        root.addObject("MechanicalObject", name="origin", template="Vec3d", position="0 0 0")
+        particles.addObject("SpringForceField", name="force", object1="@/origin", object2="@/Physics/Particles/state", indices1=np.zeros(n_particles, dtype=np.int32), indices2=np.arange(n_particles), length=length, stiffness=stiffness*np.ones(n_particles), damping=np.zeros(n_particles))
 
 
 def main():
+    import argparse
     import SofaRuntime
     import SofaImGui
     import Sofa.Gui
 
+    parser = argparse.ArgumentParser(description="Example of a scene using a ForceField implemented with JAX")
+    parser.add_argument("--method", default="implicit-matrix-assembly", help="must be 'explicit', 'implicit-matrix-free' or 'implicit-matrix-assembly'")
+    parser.add_argument("--particles", type=int, default=1000, help="number of particles (default 1000)")
+    parser.add_argument("--use-sofa", action="store_true", help="use a force field from SOFA instead of the one implemented with JAX")
+    args = parser.parse_args()
+
     root=Sofa.Core.Node("root")
-    createScene(root)
+    createScene(root, method=args.method, n_particles=args.particles, use_sofa=args.use_sofa)
     Sofa.Simulation.initRoot(root)
 
     Sofa.Gui.GUIManager.Init("myscene", "imgui")
