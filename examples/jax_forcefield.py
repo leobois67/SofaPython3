@@ -20,7 +20,7 @@ def get_force(position, length, stiffness):
     """
     Spring between the origin and the given position.
 
-    position: array of shape (n_particles, n_dim)
+    position: array of shape (n_particles, n_dimensions)
     length: scalar or array of shape (n_particles, 1)
     stiffness: scalar or array of shape (n_particles, 1)
     """
@@ -69,7 +69,7 @@ class JaxForceField(Sofa.Core.ForceFieldVec3d):
         with df.writeableArray() as wa:
             wa[:] += get_dforce(self.mstate.position.value, self.length, self.stiffness, dx.value) * mechanical_parameters['kFactor']
 
-    def addKToMatrix(self, mparams, nNodes, nDofs):
+    def addKToMatrix(self, mechanical_parameters, n_particles, n_dimensions):
         return get_kmatrix(self.mstate.position.value, self.length, self.stiffness)
 
 
