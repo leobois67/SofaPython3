@@ -80,20 +80,14 @@ def createScene(root, method="implicit-matrix-assembly", n_particles=1_000, use_
     root.addObject(
         "RequiredPlugin",
         pluginName=[
-            'Sofa.Component.Constraint.Projective',
-            'Sofa.Component.LinearSolver.Iterative',
-            'Sofa.Component.Mass',
-            'Sofa.Component.ODESolver.Backward',
-            'Sofa.Component.ODESolver.Forward',
-            'Sofa.Component.SolidMechanics.FEM.Elastic',
-            'Sofa.Component.StateContainer',
-            'Sofa.Component.Topology.Container.Dynamic',
             'Sofa.Component.Visual',
-            'Sofa.Component.Engine.Select',
-            'Sofa.Component.Topology.Container.Grid',
+            'Sofa.Component.ODESolver.Forward',
+            'Sofa.Component.ODESolver.Backward',
+            'Sofa.Component.LinearSolver.Iterative',
             'Sofa.Component.LinearSolver.Direct',
-            'Sofa.Component.Topology.Mapping',
-            'Sofa.Component.MechanicalLoad',
+            'Sofa.Component.StateContainer',
+            'Sofa.Component.Mass',
+            'Sofa.Component.SolidMechanics.FEM.Elastic',
             'Sofa.Component.SolidMechanics.Spring',
         ]
     )
