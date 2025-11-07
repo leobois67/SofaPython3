@@ -60,24 +60,17 @@ class JaxForceField(Sofa.Core.ForceFieldVec3d):
         Sofa.Core.ForceFieldVec3d.__init__(self, *args, **kwargs)
         self.length = length
         self.stiffness = stiffness
-        self.position = None
-        self.velocity = None
 
     def addForce(self, mechanical_parameters, out_force, position, velocity):
-        # Store position and velocity for usage in addDForce() and addKToMatrix()
-        # (Maybe not the correct way to do things)
-        self.position = position.value
-        self.velocity = velocity.value
         with out_force.writeableArray() as wa:
-            wa[:] += get_force(self.position, self.length, self.stiffness)
+            wa[:] += get_force(position.value, self.length, self.stiffness)
 
     def addDForce(self, mechanical_parameters, df, dx):
-        factor = mechanical_parameters['kFactor']
         with df.writeableArray() as wa:
-            wa[:] += factor * get_dforce(self.position, self.length, self.stiffness, dx.value)
+            wa[:] += get_dforce(self.mstate.position.value, self.length, self.stiffness, dx.value) * mechanical_parameters['kFactor']
 
     def addKToMatrix(self, mparams, nNodes, nDofs):
-        return get_kmatrix(self.position, self.length, self.stiffness)
+        return get_kmatrix(self.mstate.position.value, self.length, self.stiffness)
 
 
 def createScene(root):
